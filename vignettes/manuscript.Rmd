@@ -1,21 +1,18 @@
 ---
-title: Revisioning GWP of wetlands
-author: Samuel D Chamberlain^1^
+title: "Revisioning GWP of wetlands"
+author: "Samuel D Chamberlain^1^"
 date: '`r Sys.Date()`'
 output:
-  word_document: default
-  pdf_document: default
   html_document: default
-fontsize: 12pt
+  pdf_document: default
+  word_document: default
 header-includes:
 - \usepackage{setspace}
 - \doublespacing
 - \usepackage{lineno}
 - \linenumbers
 - \usepackage{hyperref}
-link-citations: yes
-csl: institute-of-physics-harvard.csl
-bibliography: library.bib
+fontsize: 12pt
 ---
 
 ^1^Department of Environmental Science, Policy, and Management, University of California, Berkeley, California, USA
@@ -38,9 +35,12 @@ library(knitr)
 library(tidyverse)
 library(gridExtra)
 library(scales)
+library(zoo)
+library(lubridate)
 
 # GWP* functions
 source("R/co2e_model.R")
+source("R/gwpfe_model.R")
 ```
 
 # Abstract
@@ -50,8 +50,130 @@ source("R/co2e_model.R")
 # 2. Methods
 
 # 3. Results
+```{r aggregate_fluxes}
+source("R/alluvium_processing.R")
+source("R/peat6_processing.R")
+source("R/peat19_processing.R")
 
-```{r fig1}
+#remove drawdown disturbance years from analysis
+peat19_sub <- subset(peat19_yearly, year > 2013)
+peat6_sub <- subset(peat6_yearly, year < 2017)
+```
+
+```{r fig1, fig.cap = "Mean annual fluxes via GWP"}
+# Process all sites to mean annual fluxes with confidence intervals
+all_sites <- rbind(peat19_sub, peat6_sub); all_sites <- rbind(all_sites, alluvium_yearly) # Combine all dataframes
+
+ma_fluxes <- all_sites %>%
+  group_by(site) %>%
+  summarise(mCH4 = mean(tCH4),
+            sdCH4 = sd(tCH4),
+            seCH4 = sd(tCH4)/sqrt(length(tCH4)),
+            mNEE = mean(tNEE),
+            sdNEE = sd(tNEE),
+            seNEE = sd(tNEE)/sqrt(length(tNEE)))
+
+
+ggplot(ma_fluxes, aes(x = mNEE, y = mCH4, color = site)) +
+  geom_point() +
+  geom_errorbar(aes(ymax = mCH4 + seCH4, ymin = mCH4 - seCH4), width = 10) +
+  geom_errorbarh(aes(xmax = mNEE + seNEE, xmin = mNEE - seNEE), height = 2) +
+  geom_abline(intercept = 0, slope = -(1/28)*(44/16)) +
+  scale_x_continuous(limits = c(-600, 0)) +
+  scale_y_continuous(limits = c(0, 60))
+  
+
+
+```
+
+```{r fig2, fig.width=7, fig.height=7, dpi=600}
+# Conventional GWP budgets
+mature <- gwpfe_model(time = 200, co2 = -424, co2sd = 223, ch4 = 48, ch4sd = 6.9, type = "eq", runs = 1000)
+peat <- gwpfe_model(time = 200, co2 = -192, co2sd = 199, ch4 = 53, ch4sd = 10.4, type = "eq", runs = 1000)
+alluvium <- gwpfe_model(time = 200, co2 = -320, co2sd = 392, ch4 = 32, ch4sd = 13.7, type = "eq", runs = 1000)
+
+# GWP* forcing equivalent budgets
+matureFE <- gwpfe_model(time = 200, co2 = -424, co2sd = 78.7, ch4 = 48, ch4sd = 6.9, type = "fe", runs = 1000)
+peatFE <- gwpfe_model(time = 200, co2 = -192, co2sd = 199, ch4 = 53, ch4sd = 10.4, type = "fe", runs = 1000)
+alluviumFE <- gwpfe_model(time = 200, co2 = -320, co2sd = 392, ch4 = 32, ch4sd = 13.7, type = "fe", runs = 1000)
+
+a <- ggplot(peat) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(aes(x = time, ymin = (ch4_cum - ch4_sd)/1000, ymax = (ch4_cum + ch4_sd)/1000), fill = "salmon 1", alpha = 0.5) +
+  geom_line(aes(x = time, y = ch4_cum/1000), color = "red") +
+  geom_ribbon(aes(x = time, ymin = (co2_cum - co2_sd)/1000, ymax = (co2_cum + co2_sd)/1000), fill = "lightgreen", alpha = 0.5) +
+  geom_line(aes(x = time, y = co2_cum/1000), color = "darkgreen") +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  scale_y_continuous(limits = c(-250, 250)) +
+  ylab("") + xlab("") + ggtitle("Peat wetland") +
+  theme_bw()
+
+b <- ggplot(peatFE) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(aes(x = time, ymin = (ch4_cum - ch4_sd)/1000, ymax = (ch4_cum + ch4_sd)/1000), fill = "salmon 1", alpha = 0.5) +
+  geom_line(aes(x = time, y = ch4_cum/1000), color = "red") +
+  geom_ribbon(aes(x = time, ymin = (co2_cum - co2_sd)/1000, ymax = (co2_cum + co2_sd)/1000), fill = "lightgreen", alpha = 0.5) +
+  geom_line(aes(x = time, y = co2_cum/1000), color = "darkgreen") +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  scale_y_continuous(limits = c(-250, 250)) +
+  ylab("") + xlab("") + ggtitle("Peat wetland") +
+  theme_bw()
+
+c <- ggplot(mature) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(aes(x = time, ymin = (ch4_cum - ch4_sd)/1000, ymax = (ch4_cum + ch4_sd)/1000), fill = "salmon 1", alpha = 0.5) +
+  geom_line(aes(x = time, y = ch4_cum/1000), color = "red") +
+  geom_ribbon(aes(x = time, ymin = (co2_cum - co2_sd)/1000, ymax = (co2_cum + co2_sd)/1000), fill = "lightgreen", alpha = 0.5) +
+  geom_line(aes(x = time, y = co2_cum/1000), color = "darkgreen") +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  scale_y_continuous(limits = c(-250, 250)) +
+  ylab("GWP CO2eq. emissions (kg m-2)") + xlab("") + ggtitle("Mature wetland") +
+  theme_bw()
+
+d <- ggplot(matureFE) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(aes(x = time, ymin = (ch4_cum - ch4_sd)/1000, ymax = (ch4_cum + ch4_sd)/1000), fill = "salmon 1", alpha = 0.5) +
+  geom_line(aes(x = time, y = ch4_cum/1000), color = "red") +
+  geom_ribbon(aes(x = time, ymin = (co2_cum - co2_sd)/1000, ymax = (co2_cum + co2_sd)/1000), fill = "lightgreen", alpha = 0.5) +
+  geom_line(aes(x = time, y = co2_cum/1000), color = "darkgreen") +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  scale_y_continuous(limits = c(-250, 250)) +
+  ylab("GWP* CO2eq. emissions (kg m-2)") + xlab("") + ggtitle("Mature wetland") +
+  theme_bw()
+
+e <- ggplot(alluvium) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(aes(x = time, ymin = (ch4_cum - ch4_sd)/1000, ymax = (ch4_cum + ch4_sd)/1000), fill = "salmon 1", alpha = 0.5) +
+  geom_line(aes(x = time, y = ch4_cum/1000), color = "red") +
+  geom_ribbon(aes(x = time, ymin = (co2_cum - co2_sd)/1000, ymax = (co2_cum + co2_sd)/1000), fill = "lightgreen", alpha = 0.5) +
+  geom_line(aes(x = time, y = co2_cum/1000), color = "darkgreen") +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  scale_y_continuous(limits = c(-250, 250)) +
+  ylab("") + xlab("Time since restoration (years)") + ggtitle("Alluvium wetland") +
+  theme_bw()
+
+f <- ggplot(alluviumFE) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(aes(x = time, ymin = (ch4_cum - ch4_sd)/1000, ymax = (ch4_cum + ch4_sd)/1000), fill = "salmon 1", alpha = 0.5) +
+  geom_line(aes(x = time, y = ch4_cum/1000), color = "red") +
+  geom_ribbon(aes(x = time, ymin = (co2_cum - co2_sd)/1000, ymax = (co2_cum + co2_sd)/1000), fill = "lightgreen", alpha = 0.5) +
+  geom_line(aes(x = time, y = co2_cum/1000), color = "darkgreen") +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  scale_y_continuous(limits = c(-250, 250)) +
+  ylab("") + xlab("Time since restoration (years)") + ggtitle("Alluvium wetland") +
+  theme_bw()
+
+grid.arrange(a, b, c, d, e, f, ncol = 2)
+
+```
+
+```{r fig3}
 wetland <- co2e_model(time1 = 0, time2 = 150, pre_co2 = 305.7, pre_co2sd = 78.7, pre_ch4 = 9.1, pre_ch4sd = 4.0, 
                     pst_co2 = 449.4, pst_co2sd = 206.0, pst_ch4 = 44.9, pst_ch4sd = 8.6, runs = 1000)
 
@@ -64,7 +186,7 @@ ggplot(wetland) +
   geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
   geom_line(aes(x = time, y = net_mean/1000)) +
   scale_y_continuous(limits = c(-250, 250)) +
-  ylab("Cumulative CO2eq. emissions (kg m-2)") + xlab("Time since restoration (years)") + ggtitle("Pasture") +
+  ylab("Cumulative CO2eq. emissions (kg m-2)") + xlab("Time since restoration (years)") + ggtitle("West") +
   theme_bw()
 ```
 
