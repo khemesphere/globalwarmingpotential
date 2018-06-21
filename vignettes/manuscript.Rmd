@@ -3,9 +3,9 @@ title: "Revisioning GWP of wetlands"
 author: "Samuel D Chamberlain^1^"
 date: '`r Sys.Date()`'
 output:
-  html_document: default
-  pdf_document: default
   word_document: default
+  pdf_document: default
+  html_document: default
 header-includes:
 - \usepackage{setspace}
 - \doublespacing
@@ -41,6 +41,7 @@ library(lubridate)
 # GWP* functions
 source("R/co2e_model.R")
 source("R/gwpfe_model.R")
+source("R/emission_savings.R")
 ```
 
 # Abstract
@@ -173,7 +174,27 @@ grid.arrange(a, b, c, d, e, f, ncol = 2)
 
 ```
 
-```{r fig3}
+```{r fig3, fig.height= 4, fig.width=6, dpi = 600}
+corn_savings <- emission_savings(time = 100, baseline_co2 = 826.2, baseline_co2sd = 163, co2 = -424, co2sd = 78.7, ch4 = 48, ch4sd = 6.9, type = "fe", runs = 1000)
+pasture_savings <- emission_savings(time = 100, baseline_co2 = 305.7, baseline_co2sd = 78.7, co2 = -424, co2sd = 78.7, ch4 = 48, ch4sd = 6.9, type = "fe", runs = 1000)
+
+ggplot() +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(data = corn_savings, aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(data = corn_savings, aes(x = time, y = net_mean/1000)) +
+  geom_ribbon(data = pasture_savings, aes(x = time, ymin = (co2base_cum - co2base_sd)/1000, ymax = (co2base_cum + co2base_sd)/1000), fill = "orange" , alpha = 0.5) +
+  geom_line(data = pasture_savings, aes(x = time, y = co2base_cum/1000), color = "orchid") + 
+  geom_ribbon(data = corn_savings, aes(x = time, ymin = (co2base_cum - co2base_sd)/1000, ymax = (co2base_cum + co2base_sd)/1000), fill = "light green" , alpha = 0.5) +
+  geom_line(data = corn_savings, aes(x = time, y = co2base_cum/1000), color = "green") +  
+  ylab("GWP* CO2eq. emissions (kg m-2)") + xlab("Time since restoration (years)") +
+  annotate("text", x = 75, y = 200, label = "Corn (100 yr): 87 kg CO2 m-2") +
+  annotate("text", x = 75, y = 185, label = "Pasture (100 yr): 18 kg CO2 m-2") +
+  theme_bw()
+
+
+```
+
+```{r fig4}
 wetland <- co2e_model(time1 = 0, time2 = 150, pre_co2 = 305.7, pre_co2sd = 78.7, pre_ch4 = 9.1, pre_ch4sd = 4.0, 
                     pst_co2 = 449.4, pst_co2sd = 206.0, pst_ch4 = 44.9, pst_ch4sd = 8.6, runs = 1000)
 
