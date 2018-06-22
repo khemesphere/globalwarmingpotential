@@ -174,24 +174,47 @@ grid.arrange(a, b, c, d, e, f, ncol = 2)
 
 ```
 
-```{r fig3, fig.height= 4, fig.width=6, dpi = 600}
-corn_savings <- emission_savings(time = 100, baseline_co2 = 826.2, baseline_co2sd = 163, co2 = -424, co2sd = 78.7, ch4 = 48, ch4sd = 6.9, type = "fe", runs = 1000)
-pasture_savings <- emission_savings(time = 100, baseline_co2 = 305.7, baseline_co2sd = 78.7, co2 = -424, co2sd = 78.7, ch4 = 48, ch4sd = 6.9, type = "fe", runs = 1000)
+```{r fig3, fig.height= 7, fig.width=4, dpi = 600}
 
-ggplot() +
+corn_savings <- emission_savings(time = 100, baseline_co2 = 958.8, baseline_co2sd = 657.3, co2 = -424, co2sd = 78.7, ch4 = 48-1.7, ch4sd = 6.9, type = "fe", runs = 1000)
+pasture_savings <- emission_savings(time = 100, baseline_co2 = 305.7, baseline_co2sd = 78.7, co2 = -424, co2sd = 78.7, ch4 = 48-9.1, ch4sd = 6.9, type = "fe", runs = 1000)
+alfalfa_savings <- emission_savings(time = 100, baseline_co2 = 411.02, baseline_co2sd = 236.4, co2 = -424, co2sd = 78.7, ch4 = 48-0.5, ch4sd = 6.9, type = "fe", runs = 1000)
+
+a <- ggplot(corn_savings) +
   geom_hline(yintercept = 0) +
-  geom_ribbon(data = corn_savings, aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
-  geom_line(data = corn_savings, aes(x = time, y = net_mean/1000)) +
-  geom_ribbon(data = pasture_savings, aes(x = time, ymin = (co2base_cum - co2base_sd)/1000, ymax = (co2base_cum + co2base_sd)/1000), fill = "orange" , alpha = 0.5) +
-  geom_line(data = pasture_savings, aes(x = time, y = co2base_cum/1000), color = "orchid") + 
-  geom_ribbon(data = corn_savings, aes(x = time, ymin = (co2base_cum - co2base_sd)/1000, ymax = (co2base_cum + co2base_sd)/1000), fill = "light green" , alpha = 0.5) +
-  geom_line(data = corn_savings, aes(x = time, y = co2base_cum/1000), color = "green") +  
-  ylab("GWP* CO2eq. emissions (kg m-2)") + xlab("Time since restoration (years)") +
-  annotate("text", x = 75, y = 200, label = "Corn (100 yr): 87 kg CO2 m-2") +
-  annotate("text", x = 75, y = 185, label = "Pasture (100 yr): 18 kg CO2 m-2") +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey", alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  geom_ribbon(aes(x = time, ymin = (co2base_cum - co2base_sd)/1000, ymax = (co2base_cum + co2base_sd)/1000), fill = "yellow2" , alpha = 0.5) +
+  geom_line(data = corn_savings, aes(x = time, y = co2base_cum/1000), color = "yellow4") +  
+  ylab("CO2eq. budget (kg m-2)") + xlab("Time since restoration (years)") +
+  annotate("text", x = 50, y = 185, label = "Corn: 111 kg savings @ 100yr") +
+  scale_y_continuous(limits = c(-50, 200)) +
   theme_bw()
 
+b <- ggplot(pasture_savings) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  geom_ribbon(aes(x = time, ymin = (co2base_cum - co2base_sd)/1000, ymax = (co2base_cum + co2base_sd)/1000), fill = "orange" , alpha = 0.5) +
+  geom_line(aes(x = time, y = co2base_cum/1000), color = "orchid") +
+  ylab("CO2eq. budget (kg m-2)") + xlab("Time since restoration (years)") +
+  #scale_y_continuous(limits = c(-200, 200)) +
+  annotate("text", x = 50, y = 185, label = "Pasture: 52 kg savings @ 100yr") +
+  scale_y_continuous(limits = c(-50, 200)) +
+  theme_bw()
 
+c <- ggplot(alfalfa_savings) +
+  geom_hline(yintercept = 0) +
+  geom_ribbon(aes(x = time, ymin = (net_mean - net_sd)/1000, ymax = (net_mean + net_sd)/1000), fill = "light grey" , alpha = 0.5) +
+  geom_line(aes(x = time, y = net_mean/1000)) +
+  geom_ribbon(aes(x = time, ymin = (co2base_cum - co2base_sd)/1000, ymax = (co2base_cum + co2base_sd)/1000), fill = "light green" , alpha = 0.5) +
+  geom_line(aes(x = time, y = co2base_cum/1000), color = "green") + 
+  ylab("CO2eq. budget (kg m-2)") + xlab("Time since restoration (years)") +
+  annotate("text", x = 50, y = 185, label = "Alfalfa: 34 kg savings @ 100yr") +
+  scale_y_continuous(limits = c(-50, 200)) +
+  theme_bw()
+
+grid.arrange(a, b, c, ncol = 1)
 ```
 
 ```{r fig4}
